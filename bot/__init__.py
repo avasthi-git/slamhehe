@@ -6,6 +6,7 @@ import random
 import string
 
 import aria2p
+import qbittorrentapi as qba
 import telegram.ext as tg
 from dotenv import load_dotenv
 from pyrogram import Client
@@ -66,6 +67,18 @@ aria2 = aria2p.API(
     )
 )
 
+
+def get_client() -> qba.TorrentsAPIMixIn:
+    qb_client = qba.Client(host="localhost", port=8090, username="admin", password="adminadmin")
+    try:
+        qb_client.auth_log_in()
+        qb_client.application.set_preferences({"disk_cache":64, "incomplete_files_ext":True, "max_connec":3000, "max_connec_per_torrent":300, "async_io_thread":32})
+        return qb_client
+    except qba.LoginFailed as e:
+        LOGGER.error(str(e))
+        return None
+
+
 DOWNLOAD_DIR = None
 BOT_TOKEN = None
 
@@ -89,7 +102,6 @@ if os.path.exists('sudo_users.txt'):
     with open('sudo_users.txt', 'r+') as f:
         lines = f.readlines()
         for line in lines:
-            AUTHORIZED_CHATS.add(int(line.split()[0]))
             SUDO_USERS.add(int(line.split()[0]))
 try:
     achats = getConfig('AUTHORIZED_CHATS')
@@ -102,7 +114,6 @@ try:
     schats = getConfig('SUDO_USERS')
     schats = schats.split(" ")
     for chats in schats:
-        AUTHORIZED_CHATS.add(int(chats))
         SUDO_USERS.add(int(chats))
 except:
     pass
@@ -153,7 +164,7 @@ if DB_URI is not None:
 LOGGER.info("Generating USER_SESSION_STRING")
 app = Client(':memory:', api_id=int(TELEGRAM_API), api_hash=TELEGRAM_HASH, bot_token=BOT_TOKEN)
 
-#Generate Telegraph Token
+# Generate Telegraph Token
 sname = ''.join(random.SystemRandom().choices(string.ascii_letters, k=8))
 LOGGER.info("Generating TELEGRAPH_TOKEN using '" + sname + "' name")
 telegraph = Telegraph()
@@ -252,21 +263,13 @@ except KeyError:
     BUTTON_SIX_NAME = None
     BUTTON_SIX_URL = None
 try:
-    STOP_DUPLICATE_MIRROR = getConfig('STOP_DUPLICATE_MIRROR')
-    if STOP_DUPLICATE_MIRROR.lower() == 'true':
-        STOP_DUPLICATE_MIRROR = True
+    STOP_DUPLICATE = getConfig('STOP_DUPLICATE')
+    if STOP_DUPLICATE.lower() == 'true':
+        STOP_DUPLICATE = True
     else:
-        STOP_DUPLICATE_MIRROR = False
+        STOP_DUPLICATE = False
 except KeyError:
-    STOP_DUPLICATE_MIRROR = False
-try:
-    STOP_DUPLICATE_MEGA = getConfig('STOP_DUPLICATE_MEGA')
-    if STOP_DUPLICATE_MEGA.lower() == 'true':
-        STOP_DUPLICATE_MEGA = True
-    else:
-        STOP_DUPLICATE_MEGA = False
-except KeyError:
-    STOP_DUPLICATE_MEGA = False
+    STOP_DUPLICATE = False
 try:
     VIEW_LINK = getConfig('VIEW_LINK')
     if VIEW_LINK.lower() == 'true':
@@ -275,14 +278,6 @@ try:
         VIEW_LINK = False
 except KeyError:
     VIEW_LINK = False
-try:
-    STOP_DUPLICATE_CLONE = getConfig('STOP_DUPLICATE_CLONE')
-    if STOP_DUPLICATE_CLONE.lower() == 'true':
-        STOP_DUPLICATE_CLONE = True
-    else:
-        STOP_DUPLICATE_CLONE = False
-except KeyError:
-    STOP_DUPLICATE_CLONE = False
 try:
     IS_TEAM_DRIVE = getConfig('IS_TEAM_DRIVE')
     if IS_TEAM_DRIVE.lower() == 'true':
@@ -330,6 +325,31 @@ try:
         IGNORE_PENDING_REQUESTS = True
 except KeyError:
     pass
+
+try:
+    BASE_URL = getConfig('BASE_URL_OF_BOT')
+    if len(BASE_URL) == 0:
+        BASE_URL = None
+except KeyError:
+    logging.warning('BASE_URL_OF_BOT not provided!')
+    BASE_URL = None
+
+try:
+    IS_VPS = getConfig('IS_VPS')
+    if IS_VPS.lower() == 'true':
+        IS_VPS = True
+    else:
+        IS_VPS = False
+except KeyError:
+    IS_VPS = False
+
+try:
+    SERVER_PORT = getConfig('SERVER_PORT')
+    if len(SERVER_PORT) == 0:
+        SERVER_PORT = None
+except KeyError:
+    logging.warning('SERVER_PORT not provided!')
+    SERVER_PORT = None
 
 updater = tg.Updater(token=BOT_TOKEN)
 bot = updater.bot
